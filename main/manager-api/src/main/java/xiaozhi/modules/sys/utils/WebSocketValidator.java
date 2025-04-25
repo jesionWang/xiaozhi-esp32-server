@@ -5,14 +5,19 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import jakarta.websocket.ClientEndpoint;
+import jakarta.websocket.ContainerProvider;
+import jakarta.websocket.Session;
+import jakarta.websocket.WebSocketContainer;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.socket.client.WebSocketClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 
+@Slf4j
 public class WebSocketValidator {
-    private static final Logger logger = LoggerFactory.getLogger(WebSocketValidator.class);
 
     // WebSocket URL正则表达式
     private static final Pattern WS_URL_PATTERN = Pattern
@@ -42,16 +47,16 @@ public class WebSocketValidator {
             return false;
         }
 
+        WebSocketClient client = new StandardWebSocketClient();
+
         try {
-            WebSocketClient client = new StandardWebSocketClient();
             CompletableFuture<Boolean> future = new CompletableFuture<>();
 
-            client.doHandshake(new WebSocketTestHandler(future), null, URI.create(url));
-
+            client.execute(new WebSocketTestHandler(future), null, URI.create(url));
             // 等待最多5秒获取连接结果
             return future.get(5, TimeUnit.SECONDS);
         } catch (Exception e) {
-            logger.error("WebSocket连接测试失败: {}", url, e);
+            log.error("WebSocket连接测试失败: {}", url, e);
             return false;
         }
     }
