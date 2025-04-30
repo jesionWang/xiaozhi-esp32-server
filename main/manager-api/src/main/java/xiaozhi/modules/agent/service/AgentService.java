@@ -42,4 +42,12 @@ public interface AgentService extends BaseService<AgentEntity> {
      * @return 设备数量
      */
     Integer getDeviceCountByAgentId(String agentId);
+
+    /**
+     * 根据智能体名称获取智能体
+     *
+     * @param agentCode 智能体编码
+     * @return AgentEntity
+     */
+    AgentEntity getAgentByCode(String agentCode);
 }

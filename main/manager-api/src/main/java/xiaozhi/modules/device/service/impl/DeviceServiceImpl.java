@@ -1,12 +1,7 @@
 package xiaozhi.modules.device.service.impl;
 
 import java.time.Instant;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
-import java.util.UUID;
+import java.util.*;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -30,6 +25,8 @@ import xiaozhi.common.service.impl.BaseServiceImpl;
 import xiaozhi.common.user.UserDetail;
 import xiaozhi.common.utils.ConvertUtils;
 import xiaozhi.common.utils.DateUtils;
+import xiaozhi.modules.agent.entity.AgentEntity;
+import xiaozhi.modules.agent.service.AgentService;
 import xiaozhi.modules.device.dao.DeviceDao;
 import xiaozhi.modules.device.dto.DevicePageUserDTO;
 import xiaozhi.modules.device.dto.DeviceReportReqDTO;
@@ -53,9 +50,33 @@ public class DeviceServiceImpl extends BaseServiceImpl<DeviceDao, DeviceEntity> 
     private final SysParamsService sysParamsService;
     private final RedisUtils redisUtils;
     private final OtaService otaService;
+    private final AgentService agentService;
 
     @Override
     public Boolean deviceActivation(String agentId, String activationCode) {
+        return deviceActivationHandler(agentId, activationCode, SecurityUser.getUser());
+    }
+
+    /**
+     * 设备激活
+     *
+     * @param activationCode    激活码
+     * @param agent             智能体
+     * @return  Boolean
+     */
+    private Boolean deviceActivation(AgentEntity agent, String activationCode) {
+        Long creator = agent.getCreator();
+        if (creator == null) {
+            throw new RenException("未知用户");
+        }
+        UserDetail userDetail = new UserDetail();
+        userDetail.setId(creator);
+
+        return deviceActivationHandler(agent.getId(), activationCode, userDetail);
+
+    }
+
+    private Boolean deviceActivationHandler(String agentId, String activationCode, UserDetail user) {
         if (StringUtils.isBlank(activationCode)) {
             throw new RenException("激活码不能为空");
         }
@@ -83,7 +104,6 @@ public class DeviceServiceImpl extends BaseServiceImpl<DeviceDao, DeviceEntity> 
         String macAddress = (String) cacheMap.get("mac_address");
         String board = (String) cacheMap.get("board");
         String appVersion = (String) cacheMap.get("app_version");
-        UserDetail user = SecurityUser.getUser();
         if (user.getId() == null) {
             throw new RenException("用户未登录");
         }
@@ -107,12 +127,12 @@ public class DeviceServiceImpl extends BaseServiceImpl<DeviceDao, DeviceEntity> 
         // 清理redis缓存
         redisUtils.delete(cacheDeviceKey);
         redisUtils.delete(deviceKey);
+
         return true;
     }
 
     @Override
-    public DeviceReportRespDTO checkDeviceActive(String macAddress, String clientId,
-            DeviceReportReqDTO deviceReport) {
+    public DeviceReportRespDTO checkDeviceActive(String macAddress, String clientId, DeviceReportReqDTO deviceReport) {
         DeviceReportRespDTO response = new DeviceReportRespDTO();
         response.setServer_time(buildServerTime());
 
@@ -163,6 +183,35 @@ public class DeviceServiceImpl extends BaseServiceImpl<DeviceDao, DeviceEntity> 
         }
 
         return response;
+    }
+
+    /**
+     * 检查设备是否激活
+     *
+     * @param macAddress        设备MAC
+     * @param clientId          客户端ID
+     * @param deviceReport      设备报告
+     * @param tenantId          租户ID
+     * @param agentCode         智能体编码
+     */
+    @Override
+    public DeviceReportRespDTO checkDeviceActive(String macAddress, String clientId, DeviceReportReqDTO deviceReport, String tenantId, String agentCode) {
+        if (StringUtils.isBlank(tenantId)) return checkDeviceActive(macAddress, clientId, deviceReport);
+
+        String deviceTenantsStr = sysParamsService.getValue(Constant.DEVICE_TENANTS, true);
+        String[] deviceTenantsArr = deviceTenantsStr.split(";");
+        if (!Arrays.asList(deviceTenantsArr).contains(tenantId)) throw new RenException("设备租户不在服务器白名单");
+
+        DeviceReportRespDTO deviceReportResp = checkDeviceActive(macAddress, clientId, deviceReport);
+        DeviceReportRespDTO.Activation activation = deviceReportResp.getActivation();
+        if (activation == null) throw new RenException("激活信息异常，设备可能已激活，请勿重复激活");
+
+        AgentEntity agent = agentService.getAgentByCode(agentCode);
+        if (agent == null) throw new RenException("未知智能体，请检查智能体后重试");
+        Boolean isActive = deviceActivation(agent, activation.getCode());
+        if (!isActive) throw new RenException("设备激活失败");
+
+        return checkDeviceActive(macAddress, clientId, deviceReport);
     }
 
     @Override

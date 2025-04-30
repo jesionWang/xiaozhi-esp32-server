@@ -19,6 +19,11 @@ public interface DeviceService extends BaseService<DeviceEntity> {
             DeviceReportReqDTO deviceReport);
 
     /**
+     * 检查设备是否激活
+     */
+    DeviceReportRespDTO checkDeviceActive(String macAddress, String clientId, DeviceReportReqDTO deviceReport, String tenantId, String agentCode);
+
+    /**
      * 获取用户指定智能体的设备列表，
      */
     List<DeviceEntity> getUserDevices(Long userId, String agentId);

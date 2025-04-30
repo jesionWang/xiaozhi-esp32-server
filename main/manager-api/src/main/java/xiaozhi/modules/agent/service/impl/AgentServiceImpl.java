@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -129,5 +130,16 @@ public class AgentServiceImpl extends BaseServiceImpl<AgentDao, AgentEntity> imp
         }
 
         return deviceCount != null ? deviceCount : 0;
+    }
+
+    /**
+     * 根据智能体名称获取智能体
+     *
+     * @param agentCode 智能体编码
+     * @return AgentEntity
+     */
+    @Override
+    public AgentEntity getAgentByCode(String agentCode) {
+        return agentDao.selectOne(new LambdaQueryWrapper<AgentEntity>().eq(AgentEntity::getAgentCode, agentCode));
     }
 }

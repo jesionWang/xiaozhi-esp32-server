@@ -105,6 +105,11 @@ public interface Constant {
     String SERVER_FRONTED_URL = "server.fronted_url";
 
     /**
+     * 设备租户
+     */
+    String DEVICE_TENANTS = "device.tenants";
+
+    /**
      * 路径分割符
      */
     String FILE_EXTENSION_SEG = ".";

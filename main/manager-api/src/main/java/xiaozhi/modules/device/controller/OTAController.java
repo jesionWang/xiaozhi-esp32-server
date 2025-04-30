@@ -44,7 +44,10 @@ public class OTAController {
     public ResponseEntity<String> checkOTAVersion(
             @RequestBody DeviceReportReqDTO deviceReportReqDTO,
             @Parameter(name = "Device-Id", description = "设备唯一标识", required = true, in = ParameterIn.HEADER) @RequestHeader("Device-Id") String deviceId,
-            @Parameter(name = "Client-Id", description = "客户端标识", required = false, in = ParameterIn.HEADER) @RequestHeader(value = "Client-Id", required = false) String clientId) {
+            @Parameter(name = "Client-Id", description = "客户端标识", required = false, in = ParameterIn.HEADER) @RequestHeader(value = "Client-Id", required = false) String clientId,
+            @Parameter(name = "Tenant-Id", description = "租户端标识", required = false, in = ParameterIn.HEADER) @RequestHeader(value = "Tenant-Id", required = false) String tenantId,
+            @Parameter(name = "Agent-Code", description = "智能体标识", required = false, in = ParameterIn.HEADER) @RequestHeader(value = "Agent-Code", required = false) String agentCode
+    ) {
         if (StringUtils.isBlank(deviceId)) {
             return createResponse(DeviceReportRespDTO.createError("Device ID is required"));
         }
@@ -57,7 +60,12 @@ public class OTAController {
         if (!deviceId.equals(macAddress) || !macAddressValid || deviceReportReqDTO.getApplication() == null) {
             return createResponse(DeviceReportRespDTO.createError("Invalid OTA request"));
         }
-        return createResponse(deviceService.checkDeviceActive(macAddress, clientId, deviceReportReqDTO));
+        // 不存在租户ID的时候，直接激活检查
+        if (StringUtils.isBlank(tenantId)) return createResponse(deviceService.checkDeviceActive(macAddress, clientId, deviceReportReqDTO));
+        // 租户ID存在的时候，走租户ID检查流程
+        if (StringUtils.isBlank(agentCode)) return createResponse(DeviceReportRespDTO.createError("Invalid Agent Code"));
+
+        return createResponse(deviceService.checkDeviceActive(macAddress, clientId, deviceReportReqDTO, tenantId, agentCode));
     }
 
     @Operation(summary = "设备快速检查激活状态")
