@@ -44,9 +44,9 @@ public class OTAController {
     public ResponseEntity<String> checkOTAVersion(
             @RequestBody DeviceReportReqDTO deviceReportReqDTO,
             @Parameter(name = "Device-Id", description = "设备唯一标识", required = true, in = ParameterIn.HEADER) @RequestHeader("Device-Id") String deviceId,
-            @Parameter(name = "Client-Id", description = "客户端标识", required = false, in = ParameterIn.HEADER) @RequestHeader(value = "Client-Id", required = false) String clientId,
-            @Parameter(name = "Tenant-Id", description = "租户端标识", required = false, in = ParameterIn.HEADER) @RequestHeader(value = "Tenant-Id", required = false) String tenantId,
-            @Parameter(name = "Agent-Code", description = "智能体标识", required = false, in = ParameterIn.HEADER) @RequestHeader(value = "Agent-Code", required = false) String agentCode
+            @Parameter(name = "Client-Id", description = "客户端标识", in = ParameterIn.HEADER) @RequestHeader(value = "Client-Id", required = false) String clientId,
+            @Parameter(name = "Tenant-Id", description = "租户端标识", in = ParameterIn.HEADER) @RequestHeader(value = "Tenant-Id", required = false) String tenantId,
+            @Parameter(name = "Agent-Code", description = "智能体标识", in = ParameterIn.HEADER) @RequestHeader(value = "Agent-Code", required = false) String agentCode
     ) {
         if (StringUtils.isBlank(deviceId)) {
             return createResponse(DeviceReportRespDTO.createError("Device ID is required"));
@@ -62,9 +62,10 @@ public class OTAController {
         }
         // 不存在租户ID的时候，直接激活检查
         if (StringUtils.isBlank(tenantId)) return createResponse(deviceService.checkDeviceActive(macAddress, clientId, deviceReportReqDTO));
-        // 租户ID存在的时候，走租户ID检查流程
+        // 租户ID存在的时候，检查智能体编码是否存在
         if (StringUtils.isBlank(agentCode)) return createResponse(DeviceReportRespDTO.createError("Invalid Agent Code"));
 
+        // 走租户ID检查流程
         return createResponse(deviceService.checkDeviceActive(macAddress, clientId, deviceReportReqDTO, tenantId, agentCode));
     }
 
@@ -72,7 +73,7 @@ public class OTAController {
     @PostMapping("activate")
     public ResponseEntity<String> activateDevice(
             @Parameter(name = "Device-Id", description = "设备唯一标识", required = true, in = ParameterIn.HEADER) @RequestHeader("Device-Id") String deviceId,
-            @Parameter(name = "Client-Id", description = "客户端标识", required = false, in = ParameterIn.HEADER) @RequestHeader(value = "Client-Id", required = false) String clientId) {
+            @Parameter(name = "Client-Id", description = "客户端标识", in = ParameterIn.HEADER) @RequestHeader(value = "Client-Id", required = false) String clientId) {
         if (StringUtils.isBlank(deviceId)) {
             return ResponseEntity.status(202).build();
         }
@@ -113,8 +114,8 @@ public class OTAController {
     /**
      * 简单判断mac地址是否有效（非严格）
      * 
-     * @param macAddress
-     * @return
+     * @param macAddress mac地址
+     * @return           boolean
      */
     private boolean isMacAddressValid(String macAddress) {
         if (StringUtils.isBlank(macAddress)) {
