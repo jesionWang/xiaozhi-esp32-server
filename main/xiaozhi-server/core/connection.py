@@ -136,6 +136,8 @@ class ConnectionHandler:
                 if "device-id" in query_params:
                     self.headers["device-id"] = query_params["device-id"][0]
                     self.headers["client-id"] = query_params["client-id"][0]
+                    self.headers["tenant-id"] = query_params["tenant-id"][0]
+                    self.headers["agent-code"] = query_params["agent-code"][0]
                 else:
                     self.logger.bind(tag=TAG).error(
                         "无法从请求头和URL查询参数中获取device-id"
