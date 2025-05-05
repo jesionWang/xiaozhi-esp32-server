@@ -150,8 +150,8 @@ async def check_bind_device(conn):
     else:
         headers = conn.headers
         if headers is not None:
-            agent_code = conn.headers["agent-code"]
-            tenant_id = conn.headers["tenant-id"]
+            agent_code = headers.get("agent-code", None)
+            tenant_id = headers.get("tenant-id", None)
             if agent_code is not None and len(agent_code) > 0 and tenant_id is not None and len(tenant_id) > 0:
                 text = f"没有找到该设备的版本信息，已向服务器发送注册请求，请稍后重启设备。"
                 music_path = "config/assets/bind_not_found_server_register.wav"
