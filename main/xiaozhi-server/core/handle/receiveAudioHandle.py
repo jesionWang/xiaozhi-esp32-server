@@ -149,18 +149,18 @@ async def check_bind_device(conn):
                 continue
     else:
         headers = conn.headers
-        if headers is not None:
-            agent_code = headers.get("agent-code", None)
-            tenant_id = headers.get("tenant-id", None)
-            if agent_code is not None and len(agent_code) > 0 and tenant_id is not None and len(tenant_id) > 0:
-                text = f"没有找到该设备的版本信息，已向服务器发送注册请求，请稍后重启设备。"
-                music_path = "config/assets/bind_not_found_server_register.wav"
-            else:
-                text = f"设备请求异常，请重新编译固件后重试。"
-                music_path = "config/assets/device_request_error.wav"
+        if headers is None:
+            headers = {}
+
+        agent_code = headers.get("agent-code", None)
+        tenant_id = headers.get("tenant-id", None)
+        if agent_code is not None and len(agent_code) > 0 and tenant_id is not None and len(tenant_id) > 0:
+            text = f"没有找到该设备的版本信息，已向服务器发送注册请求，请稍后重启设备。"
+            music_path = "config/assets/bind_not_found_server_register.wav"
         else:
             text = f"没有找到该设备的版本信息，请正确配置 OTA地址，然后重新编译固件。"
             music_path = "config/assets/bind_not_found.wav"
+
         await send_stt_message(conn, text)
         conn.tts_first_text_index = 0
         conn.tts_last_text_index = 0
