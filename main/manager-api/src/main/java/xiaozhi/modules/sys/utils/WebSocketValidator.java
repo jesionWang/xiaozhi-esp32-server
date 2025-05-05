@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.WebSocketClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 
@@ -41,12 +42,13 @@ public class WebSocketValidator {
             return false;
         }
 
-        WebSocketClient client = new StandardWebSocketClient();
-
         try {
+            WebSocketClient client = new StandardWebSocketClient();
             CompletableFuture<Boolean> future = new CompletableFuture<>();
+            WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
 
-            client.execute(new WebSocketTestHandler(future), null, URI.create(url));
+            client.execute(new WebSocketTestHandler(future), headers, URI.create(url));
+
             // 等待最多5秒获取连接结果
             return future.get(5, TimeUnit.SECONDS);
         } catch (Exception e) {
