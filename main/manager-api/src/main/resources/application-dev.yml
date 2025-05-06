@@ -1,3 +1,16 @@
+# Tomcat
+server:
+  tomcat:
+    uri-encoding: UTF-8
+    threads:
+      max: 1000
+      min-spare: 30
+  port: 8002
+  servlet:
+    context-path: /xiaozhi
+    session:
+      cookie:
+        http-only: true
 knife4j:
   production: false
   enable: true
