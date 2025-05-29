@@ -173,5 +173,5 @@ async def handleSensorMessage(conn, message):
         msg = "[sl]"  # 用户握手（左手）
     elif 'right_hand' in sensor:
         msg = "[sr]"  # 用户握手（右手）
-    logger.bind(tag=TAG).info(f"传感器事件: {sensor}, 消息: {msg}, 值: {value}, 是否首次: {first}")
+    conn.logger.bind(tag=TAG).info(f"传感器事件: {sensor}, 消息: {msg}, 值: {value}, 是否首次: {first}")
     await startToChat(conn, msg)
