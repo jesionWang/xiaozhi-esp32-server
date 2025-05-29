@@ -9,6 +9,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import lombok.AllArgsConstructor;
+import xiaozhi.common.constant.Constant;
 import xiaozhi.common.exception.ErrorCode;
 import xiaozhi.common.exception.RenException;
 import xiaozhi.common.redis.RedisKeys;
@@ -61,15 +62,16 @@ public class ConfigServiceImpl implements ConfigService {
 
         // 构建模块配置
         buildModuleConfig(
-                agent.getAgentName(),
+                null,
+                null,
                 null,
                 null,
                 agent.getVadModelId(),
                 agent.getAsrModelId(),
-                agent.getLlmModelId(),
-                agent.getTtsModelId(),
-                agent.getMemModelId(),
-                agent.getIntentModelId(),
+                null,
+                null,
+                null,
+                null,
                 result,
                 isCache);
 
@@ -108,6 +110,17 @@ public class ConfigServiceImpl implements ConfigService {
         // 获取单台设备每天最多输出字数
         String deviceMaxOutputSize = sysParamsService.getValue("device_max_output_size", true);
         result.put("device_max_output_size", deviceMaxOutputSize);
+
+        // 获取聊天记录配置
+        Integer chatHistoryConf = agent.getChatHistoryConf();
+        if (agent.getMemModelId() != null && agent.getMemModelId().equals(Constant.MEMORY_NO_MEM)) {
+            chatHistoryConf = Constant.ChatHistoryConfEnum.IGNORE.getCode();
+        } else if (agent.getMemModelId() != null
+                && !agent.getMemModelId().equals(Constant.MEMORY_NO_MEM)
+                && agent.getChatHistoryConf() == null) {
+            chatHistoryConf = Constant.ChatHistoryConfEnum.RECORD_TEXT_AUDIO.getCode();
+        }
+        result.put("chat_history_conf", chatHistoryConf);
         // 如果客户端已实例化模型，则不返回
         String alreadySelectedVadModelId = (String) selectedModule.get("VAD");
         if (alreadySelectedVadModelId != null && alreadySelectedVadModelId.equals(agent.getVadModelId())) {
@@ -117,23 +130,12 @@ public class ConfigServiceImpl implements ConfigService {
         if (alreadySelectedAsrModelId != null && alreadySelectedAsrModelId.equals(agent.getAsrModelId())) {
             agent.setAsrModelId(null);
         }
-        String alreadySelectedLlmModelId = (String) selectedModule.get("LLM");
-        if (alreadySelectedLlmModelId != null && alreadySelectedLlmModelId.equals(agent.getLlmModelId())) {
-            agent.setLlmModelId(null);
-        }
-        String alreadySelectedMemModelId = (String) selectedModule.get("Memory");
-        if (alreadySelectedMemModelId != null && alreadySelectedMemModelId.equals(agent.getMemModelId())) {
-            agent.setMemModelId(null);
-        }
-        String alreadySelectedIntentModelId = (String) selectedModule.get("Intent");
-        if (alreadySelectedIntentModelId != null && alreadySelectedIntentModelId.equals(agent.getIntentModelId())) {
-            agent.setIntentModelId(null);
-        }
 
         // 构建模块配置
         buildModuleConfig(
                 agent.getAgentName(),
                 agent.getSystemPrompt(),
+                agent.getSummaryMemory(),
                 voice,
                 agent.getVadModelId(),
                 agent.getAsrModelId(),
@@ -234,6 +236,7 @@ public class ConfigServiceImpl implements ConfigService {
     private void buildModuleConfig(
             String assistantName,
             String prompt,
+            String summaryMemory,
             String voice,
             String vadModelId,
             String asrModelId,
@@ -248,6 +251,7 @@ public class ConfigServiceImpl implements ConfigService {
         String[] modelTypes = { "VAD", "ASR", "TTS", "Memory", "Intent", "LLM" };
         String[] modelIds = { vadModelId, asrModelId, ttsModelId, memModelId, intentModelId, llmModelId };
         String intentLLMModelId = null;
+        String memLocalShortLLMModelId = null;
 
         for (int i = 0; i < modelIds.length; i++) {
             if (modelIds[i] == null) {
@@ -267,10 +271,11 @@ public class ConfigServiceImpl implements ConfigService {
                     Map<String, Object> map = (Map<String, Object>) model.getConfigJson();
                     if ("intent_llm".equals(map.get("type"))) {
                         intentLLMModelId = (String) map.get("llm");
-                        if (intentLLMModelId != null && intentLLMModelId.equals(llmModelId)) {
+                        if (StringUtils.isNotBlank(intentLLMModelId) && intentLLMModelId.equals(llmModelId)) {
                             intentLLMModelId = null;
                         }
-                    } else if ("function_call".equals(map.get("type"))) {
+                    }
+                    if (map.get("functions") != null) {
                         String functionStr = (String) map.get("functions");
                         if (StringUtils.isNotBlank(functionStr)) {
                             String[] functions = functionStr.split("\\;");
@@ -278,10 +283,31 @@ public class ConfigServiceImpl implements ConfigService {
                         }
                     }
                 }
+                if ("Memory".equals(modelTypes[i])) {
+                    Map<String, Object> map = (Map<String, Object>) model.getConfigJson();
+                    if ("mem_local_short".equals(map.get("type"))) {
+                        memLocalShortLLMModelId = (String) map.get("llm");
+                        if (StringUtils.isNotBlank(memLocalShortLLMModelId)
+                                && memLocalShortLLMModelId.equals(llmModelId)) {
+                            memLocalShortLLMModelId = null;
+                        }
+                    }
+                }
                 // 如果是LLM类型，且intentLLMModelId不为空，则添加附加模型
-                if ("LLM".equals(modelTypes[i]) && intentLLMModelId != null) {
-                    ModelConfigEntity intentLLM = modelConfigService.getModelById(intentLLMModelId, isCache);
-                    typeConfig.put(intentLLM.getId(), intentLLM.getConfigJson());
+                if ("LLM".equals(modelTypes[i])) {
+                    if (StringUtils.isNotBlank(intentLLMModelId)) {
+                        if (!typeConfig.containsKey(intentLLMModelId)) {
+                            ModelConfigEntity intentLLM = modelConfigService.getModelById(intentLLMModelId, isCache);
+                            typeConfig.put(intentLLM.getId(), intentLLM.getConfigJson());
+                        }
+                    }
+                    if (StringUtils.isNotBlank(memLocalShortLLMModelId)) {
+                        if (!typeConfig.containsKey(memLocalShortLLMModelId)) {
+                            ModelConfigEntity memLocalShortLLM = modelConfigService
+                                    .getModelById(memLocalShortLLMModelId, isCache);
+                            typeConfig.put(memLocalShortLLM.getId(), memLocalShortLLM.getConfigJson());
+                        }
+                    }
                 }
             }
             result.put(modelTypes[i], typeConfig);
@@ -294,5 +320,6 @@ public class ConfigServiceImpl implements ConfigService {
             prompt = prompt.replace("{{assistant_name}}", StringUtils.isBlank(assistantName) ? "小智" : assistantName);
         }
         result.put("prompt", prompt);
+        result.put("summaryMemory", summaryMemory);
     }
 }

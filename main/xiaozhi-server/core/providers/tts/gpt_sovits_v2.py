@@ -1,10 +1,5 @@
-import os
-import uuid
-import json
-import base64
 import requests
 from config.logger import setup_logging
-from datetime import datetime
 from core.providers.tts.base import TTSProviderBase
 from core.utils.util import parse_string_to_list
 
@@ -71,12 +66,6 @@ class TTSProvider(TTSProviderBase):
             config.get("aux_ref_audio_paths")
         )
 
-    def generate_filename(self, extension=".wav"):
-        return os.path.join(
-            self.output_file,
-            f"tts-{datetime.now().date()}@{uuid.uuid4().hex}{extension}",
-        )
-
     async def text_to_speak(self, text, output_file):
         request_json = {
             "text": text,
@@ -105,6 +94,6 @@ class TTSProvider(TTSProviderBase):
             with open(output_file, "wb") as file:
                 file.write(resp.content)
         else:
-            logger.bind(tag=TAG).error(
-                f"GPT_SoVITS_V2 TTS请求失败: {resp.status_code} - {resp.text}"
-            )
+            error_msg = f"GPT_SoVITS_V2 TTS请求失败: {resp.status_code} - {resp.text}"
+            logger.bind(tag=TAG).error(error_msg)
+            raise Exception(error_msg)
