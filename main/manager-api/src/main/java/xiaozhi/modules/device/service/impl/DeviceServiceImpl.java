@@ -3,6 +3,7 @@ package xiaozhi.modules.device.service.impl;
 import java.time.Instant;
 import java.util.*;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.scheduling.annotation.Async;
@@ -27,8 +28,8 @@ import xiaozhi.common.service.impl.BaseServiceImpl;
 import xiaozhi.common.user.UserDetail;
 import xiaozhi.common.utils.ConvertUtils;
 import xiaozhi.common.utils.DateUtils;
+import xiaozhi.modules.agent.dao.AgentDao;
 import xiaozhi.modules.agent.entity.AgentEntity;
-import xiaozhi.modules.agent.service.AgentService;
 import xiaozhi.modules.device.dao.DeviceDao;
 import xiaozhi.modules.device.dto.DevicePageUserDTO;
 import xiaozhi.modules.device.dto.DeviceReportReqDTO;
@@ -52,7 +53,7 @@ public class DeviceServiceImpl extends BaseServiceImpl<DeviceDao, DeviceEntity> 
     private final SysParamsService sysParamsService;
     private final RedisUtils redisUtils;
     private final OtaService otaService;
-    private final AgentService agentService;
+    private final AgentDao agentDao;
 
     @Async
     public void updateDeviceConnectionInfo(String agentId, String deviceId, String appVersion) {
@@ -232,7 +233,7 @@ public class DeviceServiceImpl extends BaseServiceImpl<DeviceDao, DeviceEntity> 
         DeviceReportRespDTO.Activation activation = deviceReportResp.getActivation();
         if (activation == null) throw new RenException("激活信息异常，设备可能已激活，请勿重复激活");
 
-        AgentEntity agent = agentService.getAgentByCode(agentCode);
+        AgentEntity agent = agentDao.selectOne(new LambdaQueryWrapper<AgentEntity>().eq(AgentEntity::getAgentCode, agentCode));
         if (agent == null) throw new RenException("未知智能体，请检查智能体后重试");
         Boolean isActive = deviceActivation(agent, activation.getCode());
         if (!isActive) throw new RenException("设备激活失败");

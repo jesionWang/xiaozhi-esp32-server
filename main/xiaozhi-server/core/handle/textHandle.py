@@ -29,7 +29,9 @@ async def handleTextMessage(conn, message):
             conn.logger.bind(tag=TAG).info(f"收到listen消息：{message}")
             if "mode" in msg_json:
                 conn.client_listen_mode = msg_json["mode"]
-                logger.bind(tag=TAG).debug(f"客户端拾音模式：{conn.client_listen_mode}")
+                conn.logger.bind(tag=TAG).debug(
+                    f"客户端拾音模式：{conn.client_listen_mode}"
+                )
             if "sensor" in msg_json:
                 conn.client_have_voice = True
                 conn.client_voice_stop = False

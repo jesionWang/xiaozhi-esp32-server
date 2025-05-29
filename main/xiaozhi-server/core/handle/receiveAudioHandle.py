@@ -1,7 +1,4 @@
 import time
-import json
-
-from config.logger import setup_logging
 import copy
 from core.utils.util import remove_punctuation_and_length
 from core.handle.sendAudioHandle import send_stt_message
